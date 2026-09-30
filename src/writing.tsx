@@ -42,8 +42,8 @@ function arrow(p: Pt[]) {
 type PadProps = { d: string[]; mode: Mode; size: number; hintAfter?: number; lenient?: number; disabled?: boolean; onDone?: (misses: number) => void; onLock?: (drawing: boolean) => void };
 
 /**
- * Handwriting pad. Each finished stroke is graded against the next expected stroke: a match snaps to the clean
- * stroke, a miss flashes red and shakes, and after `hintAfter` misses on one stroke the pad draws it as a hint.
+ * Handwriting pad. Each finished stroke is graded against the next expected stroke: a match stays on the pad as the
+ * student wrote it, a miss flashes red and shakes, and after `hintAfter` misses on one stroke the pad draws it as a hint.
  */
 export function Pad({ d, mode, size, hintAfter = 2, lenient, disabled, onDone, onLock }: PadProps) {
   const refs = useMemo(() => d.map(x => sample(x)), [d]);
@@ -51,6 +51,7 @@ export function Pad({ d, mode, size, hintAfter = 2, lenient, disabled, onDone, o
   const [done, setDone] = useState(0);
   const [shown, setShown] = useState(0); // demo: strokes fully animated
   const [ink, setInk] = useState<Pt[]>([]);
+  const [kept, setKept] = useState<Pt[][]>([]); // the student's accepted strokes, as drawn
   const [bad, setBad] = useState<Pt[]>([]);
   const [miss, setMiss] = useState(0); // on the current stroke
   const [total, setTotal] = useState(0);
@@ -94,7 +95,7 @@ export function Pad({ d, mode, size, hintAfter = 2, lenient, disabled, onDone, o
     if (idle || !p.length) return;
     const v = judge(p, refs, done, lenient ?? LENIENT[mode]);
     if (v === 'tap') return;
-    if (v === 'ok') { setDone(done + 1); setMiss(0); setMsg(null); return; }
+    if (v === 'ok') { setKept([...kept, p]); setDone(done + 1); setMiss(0); setMsg(null); return; }
     setBad(p);
     fade.setValue(1);
     Animated.timing(fade, { toValue: 0, duration: 500, delay: 250, useNativeDriver: true }).start();
@@ -130,7 +131,7 @@ export function Pad({ d, mode, size, hintAfter = 2, lenient, disabled, onDone, o
               ? d.slice(0, shown + 1).map((x, i) => (i < shown
                 ? <Path key={i} d={x} stroke={complete ? C.ok : C.ink} {...pen} />
                 : <Draw key={i} d={x} len={lens[i]} color={C.brand} delay={i ? 180 : 400} onEnd={() => setShown(i + 1)} />))
-              : d.slice(0, done).map((x, i) => <Path key={i} d={x} stroke={complete ? C.ok : C.ink} {...pen} />)}
+              : kept.map((p, i) => <Path key={i} d={poly(p)} stroke={complete ? C.ok : C.ink} {...pen} />)}
             {ink.length > 1 && <Path d={poly(ink)} stroke={C.ink} {...pen} />}
           </Svg>
         </View>
