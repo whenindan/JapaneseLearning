@@ -4,6 +4,7 @@ import { C, J, R } from './theme';
 import { Bar, Btn, Card, FadeIn, Footer, Header, Icon, JP, Label, MIcon, Pill, Screen, Sheet, SqBtn, T, Tap, speak, useFlip } from './ui';
 import { KANJI, type Ex } from './data';
 import { Pad } from './writing';
+import { Bubble, MASCOTS, Mascot, Say, line, type MascotId } from './mascot';
 
 export type Cat = 'grammar' | 'vocab' | 'kanji';
 export const CAT: Record<Ex['t'], Cat> = { fill: 'grammar', error: 'grammar', order: 'grammar', match: 'vocab', picture: 'vocab', type: 'vocab', kanji: 'kanji', write: 'kanji' };
@@ -300,14 +301,18 @@ function MatchCard({ c, done, up, onPress }: { c: { jp: boolean; t: string }; do
 
 // ——— Feedback sheet ———
 
-function Feedback({ ex, v, action, onAction }: { ex: Ex; v: Verdict; action: string; onAction: () => void }) {
+function Feedback({ ex, v, n, guide, action, onAction }: { ex: Ex; v: Verdict; n: number; guide: MascotId; action: string; onAction: () => void }) {
   const fg = v.ok ? C.ok : C.brandDark;
+  const L = MASCOTS[guide].lines;
   const sayWord = ex.t === 'picture' || ex.t === 'kanji' || ex.t === 'write';
   return (
     <Sheet>
       <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: v.ok ? C.okSoft : C.brandSoft2, alignItems: 'center', justifyContent: 'center' }}><Icon name={v.ok ? 'check' : 'x'} size={20} color={fg} /></View>
-        <View style={{ flex: 1 }}><T size={17} w={600} color={fg}>{v.title}</T>{!!v.sub && <T size={12} color={C.mute}>{v.sub}</T>}</View>
+        <Mascot id={guide} size={64} mood={v.ok ? 'correct' : 'oops'} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Bubble bg={C.bg} style={{ alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 10 }}><Say size={12} text={line(v.ok ? L.ok : L.bad, n)} /></Bubble>
+          <View><T size={17} w={600} color={fg}>{v.title}</T>{!!v.sub && <T size={12} color={C.mute}>{v.sub}</T>}</View>
+        </View>
         {sayWord && v.replay ? <SqBtn icon="volume-2" bg={C.bg} color={C.brand} onPress={() => speak(v.replay!)} /> : v.ok ? <MIcon name="star" size={22} color={C.gold} /> : null}
       </View>
       {!sayWord && v.replay && (
@@ -332,9 +337,10 @@ function Feedback({ ex, v, action, onAction }: { ex: Ex; v: Verdict; action: str
 
 const AUTO = new Set<Ex['t']>(['fill', 'picture', 'kanji', 'error', 'match', 'write']);
 
-type RunnerProps = { title: string; items: Ex[]; onBack: () => void; onFinish: (r: Result) => void; finishLabel?: string; accent?: string; examMinutes?: number };
+/** `guide`: the character that reacts to answers in practice mode */
+type RunnerProps = { title: string; guide: MascotId; items: Ex[]; onBack: () => void; onFinish: (r: Result) => void; finishLabel?: string; accent?: string; examMinutes?: number };
 
-export function Runner({ title, items, onBack, onFinish, finishLabel = 'Hoàn thành', accent = C.brand, examMinutes }: RunnerProps) {
+export function Runner({ title, guide, items, onBack, onFinish, finishLabel = 'Hoàn thành', accent = C.brand, examMinutes }: RunnerProps) {
   const exam = !!examMinutes;
   const [n, setN] = useState(0);
   const [raws, setRaws] = useState<Raw[]>(() => items.map(() => undefined));
@@ -402,7 +408,7 @@ export function Runner({ title, items, onBack, onFinish, finishLabel = 'Hoàn th
           <Bar value={(n + (reveal ? 1 : 0)) / items.length} color={accent} />
         </Header>
       )}
-      <ScrollView ref={scroll} scrollEnabled={!lock} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: needsSheet ? (exam ? 330 : 280) : 24 }}>
+      <ScrollView ref={scroll} scrollEnabled={!lock} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: needsSheet ? 330 : 24 }}>
         {exam && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Pill label={CAT_NAME[CAT[ex.t]]} bg={C.brandSoft} color={C.brand} size={12} style={{ paddingVertical: 4, paddingHorizontal: 10 }} />
@@ -420,8 +426,8 @@ export function Runner({ title, items, onBack, onFinish, finishLabel = 'Hoàn th
           <Btn label="Kiểm tra" disabled={!canCheck} onPress={() => commit()} style={{ flex: 1 }} />
         </Footer>
       )}
-      {!exam && reveal && ex.t === 'type' && <Footer><Btn label={last ? finishLabel : 'Tiếp tục'} onPress={next} style={{ flex: 1 }} /></Footer>}
-      {!exam && verdict && ex.t !== 'type' && <Feedback ex={ex} v={verdict} action={last ? finishLabel : 'Tiếp tục'} onAction={next} />}
+      {!exam && reveal && ex.t === 'type' && <Footer style={{ alignItems: 'center' }}><Mascot id={guide} size={52} mood={verdict?.ok ? 'correct' : 'oops'} /><Btn label={last ? finishLabel : 'Tiếp tục'} onPress={next} style={{ flex: 1 }} /></Footer>}
+      {!exam && verdict && ex.t !== 'type' && <Feedback ex={ex} v={verdict} n={n} guide={guide} action={last ? finishLabel : 'Tiếp tục'} onAction={next} />}
 
       {exam && (
         <Sheet>

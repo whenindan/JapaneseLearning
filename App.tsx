@@ -10,6 +10,7 @@ import { EX_GRAMMAR, EX_KANJI, EX_TEST, EX_VOCAB, KANJI, LESSON } from './src/da
 import { Runner, Result } from './src/exercises';
 import { Grammar, Home, Kanji, LessonHub, Listening, Profile, Progress, ResultScreen, Tab, Vocab } from './src/screens';
 import { Writing } from './src/writing';
+import type { MascotId } from './src/mascot';
 
 /** `i`/`stage`: which kanji and writing stage the 'write' screen opens on */
 type Route = { s: string; r?: Result; from?: string; tab?: 'learn' | 'ex' | 'test'; i?: number; stage?: number };
@@ -94,6 +95,7 @@ export default function App() {
   };
 
   const [p, setP] = useState<Progress>({ grammar: 0, vocab: 0, kanji: 0, listening: false, exercises: {}, best: 0, stars: 0, written: {} });
+  const [guide, setGuide] = useState<MascotId>('poko');
   const cur = stack.filter(e => !e.leaving).at(-1) ?? stack[stack.length - 1];
   const up = (f: Partial<Progress>) => setP(o => ({ ...o, ...f }));
   const more = (k: 'grammar' | 'vocab' | 'kanji') => (n: number) => setP(o => ({ ...o, [k]: Math.max(o[k], n) }));
@@ -109,29 +111,29 @@ export default function App() {
 
   const render = (cur: Entry): React.ReactNode => {
     let view: React.ReactNode;
-    if (cur.s === 'home') view = <Home p={p} open={() => push({ s: 'hub' })} go={s => push({ s })} tab={tab} />;
-    else if (cur.s === 'profile') view = <Profile p={p} tab={tab} />;
+    if (cur.s === 'home') view = <Home p={p} guide={guide} open={() => push({ s: 'hub' })} go={s => push({ s })} tab={tab} />;
+    else if (cur.s === 'profile') view = <Profile p={p} guide={guide} setGuide={setGuide} tab={tab} />;
     else if (cur.s === 'hub') view = <LessonHub p={p} initial={cur.tab} back={pop} go={s => push({ s })} startTest={() => push({ s: 'test' })} />;
-    else if (cur.s === 'grammar') view = <Grammar back={pop} seen={more('grammar')} />;
+    else if (cur.s === 'grammar') view = <Grammar guide={guide} back={pop} seen={more('grammar')} />;
     else if (cur.s === 'vocab') view = <Vocab back={pop} seen={more('vocab')} />;
     else if (cur.s === 'kanji') view = <Kanji back={pop} seen={more('kanji')} written={p.written} write={(i, stage) => push({ s: 'write', i, stage })} />;
     else if (cur.s === 'write') {
       const k = KANJI[cur.i!];
       view = <Writing k={k} start={cur.stage} back={pop} passed={n => setP(o => ({ ...o, written: { ...o.written, [k.ch]: Math.max(o.written[k.ch] ?? 0, n) } }))} />;
     }
-    else if (cur.s === 'listening') view = <Listening back={pop} done={() => up({ listening: true })} />;
+    else if (cur.s === 'listening') view = <Listening guide={guide} back={pop} done={() => up({ listening: true })} />;
     else if (cur.s === 'test') view = (
-      <Runner title={`Kiểm tra Bài ${LESSON.no}`} items={EX_TEST} examMinutes={10} onBack={pop}
+      <Runner title={`Kiểm tra Bài ${LESSON.no}`} guide={guide} items={EX_TEST} examMinutes={10} onBack={pop}
         onFinish={r => { addStars(r); setP(o => ({ ...o, best: Math.max(o.best, Math.round((r.correct / r.total) * 100)) })); replace({ s: 'result-test', r }); }} />
     );
-    else if (cur.s === 'result-test') view = <ResultScreen r={cur.r!} kind="test" back={() => (Math.round((cur.r!.correct / cur.r!.total) * 100) >= 80 ? reset({ s: 'home' }) : pop())} retry={() => replace({ s: 'test' })} />;
+    else if (cur.s === 'result-test') view = <ResultScreen r={cur.r!} guide={guide} kind="test" back={() => (Math.round((cur.r!.correct / cur.r!.total) * 100) >= 80 ? reset({ s: 'home' }) : pop())} retry={() => replace({ s: 'test' })} />;
     else if (cur.s in EX) {
       const [k, title, items, accent] = EX[cur.s as keyof typeof EX];
       view = (
-        <Runner title={title} items={[...items]} accent={accent} onBack={pop} finishLabel="Xem kết quả"
+        <Runner title={title} guide={guide} items={[...items]} accent={accent} onBack={pop} finishLabel="Xem kết quả"
           onFinish={r => { addStars(r); if (r.correct / r.total >= 0.6) setP(o => ({ ...o, exercises: { ...o.exercises, [k]: true } })); replace({ s: 'result-ex', r, from: cur.s }); }} />
       );
-    } else if (cur.s === 'result-ex') view = <ResultScreen r={cur.r!} kind="ex" back={pop} retry={() => replace({ s: cur.from! })} />;
+    } else if (cur.s === 'result-ex') view = <ResultScreen r={cur.r!} guide={guide} kind="ex" back={pop} retry={() => replace({ s: cur.from! })} />;
     return view;
   };
 

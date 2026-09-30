@@ -6,6 +6,7 @@ import { Bar, Btn, Card, FadeIn, Footer, Header, Icon, JP, Label, MIcon, Pill, S
 import { GRAMMAR, KANJI, LESSON, LISTENING, UPCOMING, VOCAB } from './data';
 import { CAT_NAME, type Cat, type Result } from './exercises';
 import { WRITE_STAGES } from './writing';
+import { Bubble, MASCOTS, MASCOT_IDS, Mascot, Say, type MascotId, type Mood } from './mascot';
 
 /** `written`: writing-practice stages passed per kanji */
 export type Progress = { grammar: number; vocab: number; kanji: number; listening: boolean; exercises: Record<string, boolean>; best: number; stars: number; written: Record<string, number> };
@@ -15,6 +16,23 @@ const exDone = (p: Progress) => Object.values(p.exercises).filter(Boolean).lengt
 export const pct = (p: Progress) => (p.grammar / GRAMMAR.length + p.vocab / VOCAB.length + p.kanji / KANJI.length + Number(p.listening) + exDone(p) / 3) / 5;
 const partsLeft = (p: Progress) => [p.grammar < GRAMMAR.length, p.vocab < VOCAB.length, p.kanji < KANJI.length, !p.listening].filter(Boolean).length + (3 - exDone(p));
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+/** The guide's suggestion for what to do next, in lesson order */
+const nextStep = (p: Progress): { s: string; t: string } => {
+  if (p.grammar < GRAMMAR.length) return { s: 'grammar', t: `Tiếp theo: Ngữ pháp · còn ${GRAMMAR.length - p.grammar} điểm` };
+  if (p.vocab < VOCAB.length) return { s: 'vocab', t: `Tiếp theo: Từ vựng · còn ${VOCAB.length - p.vocab} thẻ` };
+  if (p.kanji < KANJI.length) return { s: 'kanji', t: `Tiếp theo: Kanji · còn ${KANJI.length - p.kanji} chữ` };
+  if (!p.listening) return { s: 'listening', t: 'Tiếp theo: Nghe & đọc hiểu' };
+  const e = (['grammar', 'vocab', 'kanji'] as const).find(k => !p.exercises[k]);
+  if (e) return { s: `ex-${e}`, t: `Tiếp theo: Bài tập ${CAT_NAME[e]}` };
+  if (p.best < 80) return { s: 'test', t: `Tiếp theo: Kiểm tra Bài ${LESSON.no} · cần ≥ 80 điểm` };
+  return { s: 'hub', t: `Bạn đã qua Bài ${LESSON.no}! Ôn lại bất cứ lúc nào.` };
+};
+/** Round avatar showing the guide's face */
+const Face = ({ g, size }: { g: MascotId; size: number }) => (
+  <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: MASCOTS[g].bg, overflow: 'hidden' }}>
+    <Mascot id={g} size={size * 1.45} still style={{ position: 'absolute', left: -size * 0.225, top: -size * 0.02 }} />
+  </View>
+);
 const greeting = () => { const h = new Date().getHours(); return h < 11 ? 'Chào buổi sáng' : h < 18 ? 'Chào buổi chiều' : 'Chào buổi tối'; };
 
 // ——— Tab bar ———
@@ -42,8 +60,9 @@ export function TabBar({ active, go }: { active: Tab; go: (t: Tab) => void }) {
 // ——— Home ———
 
 const CARD_W = 250;
-export function Home({ p, open, go, tab }: { p: Progress; open: () => void; go: (s: string) => void; tab: (t: Tab) => void }) {
+export function Home({ p, guide: g, open, go, tab }: { p: Progress; guide: MascotId; open: () => void; go: (s: string) => void; tab: (t: Tab) => void }) {
   const v = pct(p);
+  const next = nextStep(p);
   const [slide, setSlide] = useState(0);
   const mods = [
     { s: 'grammar', icon: 'film', t: 'Ngữ pháp', sub: `${GRAMMAR.length} điểm · có ví dụ`, tone: TONE.grammar, done: p.grammar >= GRAMMAR.length },
@@ -56,13 +75,26 @@ export function Home({ p, open, go, tab }: { p: Progress; open: () => void; go: 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={{ paddingHorizontal: 20, paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View><T size={13} color={C.mute}>{greeting()}</T><T size={22} w={600}>Hôm nay học gì?</T></View>
-          <Pressable onPress={() => tab('profile')} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' }}><JP size={17} lh={1.2}>あ</JP></Pressable>
+          <Pressable onPress={() => tab('profile')} accessibilityLabel="Hồ sơ"><Face g={g} size={42} /></Pressable>
         </View>
         <View style={{ marginTop: 14, marginHorizontal: 20, flexDirection: 'row', gap: 8 }}>
           <Pill label="N5" bg={C.ink} color={C.white} />
           <Pill label="N4" color={C.mute} />
           <View style={{ flex: 1 }} />
           <Pill label={String(p.stars)} w={600} color={C.goldDark} icon={<MIcon name="star" size={16} color={C.gold} />} />
+        </View>
+
+        <View style={{ marginTop: 14, marginHorizontal: 20, flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <Mascot id={g} size={84} mood="wave" tap />
+          <Tap onPress={() => go(next.s)} style={{ flex: 1, marginTop: 4 }}>
+            <Bubble>
+              <Say text={MASCOTS[g].lines.hi} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <T size={12} w={600} color={C.brand} style={{ flex: 1 }}>{next.t}</T>
+                <Icon name="arrow-right" size={14} color={C.brand} />
+              </View>
+            </Bubble>
+          </Tap>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={CARD_W + 12} decelerationRate="fast"
@@ -116,7 +148,7 @@ export function Home({ p, open, go, tab }: { p: Progress; open: () => void; go: 
 
 // ——— Profile ———
 
-export function Profile({ p, tab }: { p: Progress; tab: (t: Tab) => void }) {
+export function Profile({ p, guide: g, setGuide, tab }: { p: Progress; guide: MascotId; setGuide: (g: MascotId) => void; tab: (t: Tab) => void }) {
   const badges = [
     { icon: 'film', t: 'Ngữ pháp', ok: p.grammar >= GRAMMAR.length },
     { icon: 'layers', t: 'Từ vựng', ok: p.vocab >= VOCAB.length },
@@ -129,7 +161,7 @@ export function Profile({ p, tab }: { p: Progress; tab: (t: Tab) => void }) {
     <Screen>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
         <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-          <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: C.gold, alignItems: 'center', justifyContent: 'center' }}><JP size={36} lh={1.2}>あ</JP></View>
+          <Face g={g} size={84} />
           <T size={20} w={600} style={{ marginTop: 10 }}>Học viên N5</T>
           <T size={13} color={C.mute}>Minna no Nihongo · Bài {LESSON.no}</T>
         </View>
@@ -137,6 +169,30 @@ export function Profile({ p, tab }: { p: Progress; tab: (t: Tab) => void }) {
           {[[String(p.stars), 'Sao'], [`${Math.round(pct(p) * 100)}%`, `Bài ${LESSON.no}`], [p.best ? String(p.best) : '—', 'Điểm KT']].map(([v, l]) => (
             <Card key={l} style={{ flex: 1, alignItems: 'center' }}><T size={20} w={700}>{v}</T><T size={12} color={C.mute}>{l}</T></Card>
           ))}
+        </View>
+        <T size={15} w={600} style={{ marginTop: 22 }}>Người đồng hành</T>
+        <T size={12} color={C.mute} style={{ marginBottom: 10 }}>Chọn nhân vật hướng dẫn bạn trong lúc học</T>
+        <View style={{ gap: 10 }}>
+          {MASCOT_IDS.map(id => {
+            const M = MASCOTS[id], on = id === g;
+            return (
+              <Card key={id} onPress={() => setGuide(id)} style={{ flexDirection: 'row', gap: 12, alignItems: 'center', borderWidth: 2, borderColor: on ? C.brand : C.white }}>
+                <View style={{ width: 84, height: 96, borderRadius: R.md, backgroundColor: M.bg, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 2 }}>
+                  <Mascot id={id} size={76} mood={on ? 'wave' : 'idle'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <T size={16} w={700}>{M.name}</T><JP size={13} lh={1.3} color={M.color}>{M.kana}</JP>
+                    <View style={{ flex: 1 }} />
+                    <Icon name={on ? 'check-circle' : 'circle'} size={18} color={on ? C.brand : C.line} />
+                  </View>
+                  <T size={12} w={500} color={C.mute}>{M.animal} · {M.role}</T>
+                  <T size={12} style={{ marginTop: 4 }}>{M.desc}</T>
+                  <JP size={13} w={500} color={M.color} style={{ marginTop: 4 }}>{M.catch[0]}</JP>
+                </View>
+              </Card>
+            );
+          })}
         </View>
         <T size={15} w={600} style={{ marginTop: 22, marginBottom: 10 }}>Huy hiệu</T>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -238,7 +294,7 @@ export function LessonHub({ p, back, go, startTest, initial = 'learn' }: { p: Pr
 
 // ——— Grammar ———
 
-export function Grammar({ back, seen }: { back: () => void; seen: (n: number) => void }) {
+export function Grammar({ guide, back, seen }: { guide: MascotId; back: () => void; seen: (n: number) => void }) {
   const [i, setI] = useState(0);
   const g = GRAMMAR[i];
   const scroll = useRef<ScrollView>(null);
@@ -270,9 +326,12 @@ export function Grammar({ back, seen }: { back: () => void; seen: (n: number) =>
             ))}
           </View>
         </Card>
-        <View style={{ marginTop: 12, marginHorizontal: 16, backgroundColor: C.goldSoft, borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14, flexDirection: 'row', gap: 8 }}>
-          <MIcon name="lightbulb-on-outline" size={18} color={C.goldInk} />
-          <T size={13} color={C.goldInk} style={{ flex: 1 }}>{g.tip}</T>
+        <View style={{ marginTop: 12, marginHorizontal: 16, flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <Mascot id={guide} size={60} mood="wave" tap />
+          <Bubble bg={C.goldSoft} style={{ flex: 1 }}>
+            <Label color={C.goldInk}>{MASCOTS[guide].name.toUpperCase()} MẸO</Label>
+            <T size={13} color={C.goldInk}>{g.tip}</T>
+          </Bubble>
         </View>
         </FadeIn>
       </ScrollView>
@@ -416,7 +475,7 @@ export function Kanji({ back, seen, written, write }: { back: () => void; seen: 
 // ——— Listening ———
 
 const SPEEDS = [1, 0.75, 0.5];
-export function Listening({ back, done }: { back: () => void; done: () => void }) {
+export function Listening({ guide: g, back, done }: { guide: MascotId; back: () => void; done: () => void }) {
   const L = LISTENING;
   const [tab, setTab] = useState<'read' | 'q'>('read');
   const [vi, setVi] = useState(false);
@@ -425,12 +484,14 @@ export function Listening({ back, done }: { back: () => void; done: () => void }
   const [pos, setPos] = useState(0);
   const [speed, setSpeed] = useState(0);
   const token = useRef(0);
+  const [react, setReact] = useState<{ m: Mood; n: number } | null>(null);
   const all = Object.keys(ans).length === L.questions.length;
   const score = L.questions.filter((q, i) => ans[i] === q.a).length;
 
   const stop = () => { token.current++; stopSpeak(); setCur(-1); };
   const play = (from: number) => {
     const t = ++token.current;
+    setReact(null);
     const step = (i: number) => {
       if (t !== token.current) return;
       if (i >= L.passage.length) { setCur(-1); setPos(L.passage.length); return; }
@@ -450,6 +511,7 @@ export function Listening({ back, done }: { back: () => void; done: () => void }
           <View style={{ height: 150, backgroundColor: C.brandSoft2, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ fontSize: 72 }}>{L.emoji}</Text>
             <Label color={C.brandDark} style={{ position: 'absolute', left: 12, bottom: 10 }}>{L.caption.toUpperCase()}</Label>
+            <Mascot id={g} size={72} mood={playing ? 'speak' : react?.m ?? 'idle'} nonce={react?.n} tap style={{ position: 'absolute', right: 10, bottom: 4 }} />
           </View>
           <View style={{ paddingVertical: 12, paddingHorizontal: 14, flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <Pressable onPress={() => (playing ? stop() : play(pos >= L.passage.length ? 0 : pos))} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.brandDark, alignItems: 'center', justifyContent: 'center' }}>
@@ -487,7 +549,7 @@ export function Listening({ back, done }: { back: () => void; done: () => void }
                   {q.opts.map((o, oi) => {
                     const a = ans[qi];
                     const [bg, fg] = a === undefined ? [C.bg, C.ink] : oi === q.a ? [C.ok, C.white] : a === oi ? [C.brandSoft2, C.brandDark] : [C.bg, C.faint];
-                    return <Pressable key={o} onPress={() => a === undefined && setAns({ ...ans, [qi]: oi })} style={{ flex: 1, backgroundColor: bg, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 4 }}><JP size={13} color={fg} center lh={1.3}>{o}</JP></Pressable>;
+                    return <Pressable key={o} onPress={() => { if (a !== undefined) return; setAns({ ...ans, [qi]: oi }); setReact({ m: oi === q.a ? 'correct' : 'oops', n: qi }); }} style={{ flex: 1, backgroundColor: bg, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 4 }}><JP size={13} color={fg} center lh={1.3}>{o}</JP></Pressable>;
                   })}
                 </View>
               </Card>
@@ -509,7 +571,7 @@ export function Listening({ back, done }: { back: () => void; done: () => void }
 // ——— Result ———
 
 const CAT_SHORT: Record<Cat, string> = { grammar: 'NP', vocab: 'TV', kanji: 'Kanji' };
-export function ResultScreen({ r, kind, back, retry }: { r: Result; kind: 'ex' | 'test'; back: () => void; retry: () => void }) {
+export function ResultScreen({ r, guide: g, kind, back, retry }: { r: Result; guide: MascotId; kind: 'ex' | 'test'; back: () => void; retry: () => void }) {
   const ins = useSafeAreaInsets();
   const score = Math.round((r.correct / r.total) * 100);
   const pass = kind === 'test' ? score >= 80 : score >= 60;
@@ -526,9 +588,10 @@ export function ResultScreen({ r, kind, back, retry }: { r: Result; kind: 'ex' |
   return (
     <Screen bg={C.brand}>
       <View style={{ paddingTop: 16, paddingBottom: 22, alignItems: 'center' }}>
-        <Animated.View style={{ width: 90, height: 90, borderRadius: 28, backgroundColor: pass ? C.gold : 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
-          opacity: pop.interpolate({ inputRange: [0, 0.3], outputRange: [0, 1], extrapolate: 'clamp' }), transform: [{ scale: pop }, { rotate: pop.interpolate({ inputRange: [0, 1], outputRange: ['-40deg', '-6deg'] }) }] }}>
-          <Icon name={pass ? 'award' : 'trending-up'} size={44} color={pass ? C.ink : C.white} />
+        <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20,
+          opacity: pop.interpolate({ inputRange: [0, 0.3], outputRange: [0, 1], extrapolate: 'clamp' }), transform: [{ scale: pop }] }}>
+          <Mascot id={g} size={96} mood={pass ? 'correct' : 'oops'} tap />
+          <Bubble style={{ flex: 1 }}><Say text={pass ? MASCOTS[g].lines.pass : MASCOTS[g].lines.fail} /></Bubble>
         </Animated.View>
         <Text style={{ marginTop: 12 }}><T size={44} w={700} color={C.white}>{shownScore}</T><T size={18} w={700} color="rgba(255,255,255,0.7)">/100</T></Text>
         <T size={15} w={500} color={C.white}>

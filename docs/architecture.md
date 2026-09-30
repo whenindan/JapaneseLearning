@@ -13,6 +13,7 @@ A Japanese-learning app for Vietnamese speakers (JLPT N5, Minna no Nihongo Lesso
 | `src/exercises.tsx` | ~450 | `Runner` (quiz engine), `grade()`, one component per exercise type. See [exercises.md](exercises.md) |
 | `src/writing.tsx` | ~220 | `Pad` (handwriting canvas) and `Writing` (4-stage practice screen). See [handwriting.md](handwriting.md) |
 | `src/strokes.ts` | ~90 | Pure stroke geometry + grading (SVG path sampling, `judge()`) |
+| `src/mascot.tsx` | ~370 | Guide characters (Poko/Mame/Kon): `Mascot`, `Bubble`, `Say`, `MASCOTS` data. See [mascot.md](mascot.md) |
 | `src/ui.tsx` | ~170 | Shared primitives (`T`, `JP`, `Btn`, `Card`, `Sheet`, `Tap`, `FadeIn`, `speak`…). See [ui.md](ui.md) |
 | `src/theme.ts` | ~20 | Color/radius/font tokens `C`, `R`, `F`, `J`, `TONE`, `shadow()` |
 
@@ -47,7 +48,7 @@ Tab bar (`TabBar` in screens.tsx, shown on Home/Profile): `home`/`profile` → `
 
 ## State
 
-All state is in-memory in `App` (`useState<Progress>`); it resets on app restart.
+All state is in-memory in `App` (`useState<Progress>`); it resets on app restart. The chosen guide character is a separate `useState<MascotId>` (`guide`, default `'poko'`), passed as a `guide` prop to `Home`, `Profile` (+ `setGuide`), `Grammar`, `Listening`, `Runner` and `ResultScreen`.
 
 ```ts
 type Progress = {
@@ -67,7 +68,7 @@ type Progress = {
 ## Conventions
 
 - Very terse naming (`p`, `r`, `ex`, `k`, `C`, `T`, `JP`), dense one-line JSX, inline styles (no `StyleSheet.create` except `absoluteFill`). Match this.
-- Colors only via `C.*` tokens; text only via `T` (Latin/Vietnamese) or `JP` (Japanese) so fonts are right.
+- Colors only via `C.*` tokens (the character art in `mascot.tsx` keeps its own palette); text only via `T` (Latin/Vietnamese) or `JP` (Japanese) so fonts are right.
 - Animations use RN `Animated` with `useNativeDriver: true` where possible (no Reanimated).
 - Comments are sparse JSDoc one-liners explaining *why*.
 - Portrait only, light mode only (`app.json`).
