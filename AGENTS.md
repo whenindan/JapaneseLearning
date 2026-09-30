@@ -11,6 +11,7 @@ src/screens.tsx    Home, Profile, LessonHub, Grammar, Vocab, Kanji, Listening, R
 src/exercises.tsx  Runner quiz engine + grade() + per-type exercise components
 src/writing.tsx    handwriting Pad + 4-stage Writing screen
 src/strokes.ts     pure stroke geometry/grading
+src/mascot.tsx     animated guide characters (Poko/Mame/Kon) + speech bubbles
 src/ui.tsx         shared UI primitives + speak()
 src/theme.ts       color/radius/font tokens
 ```
@@ -22,6 +23,7 @@ src/theme.ts       color/radius/font tokens
 - [docs/exercises.md](docs/exercises.md) — `Runner`, practice vs exam mode, grading rules, `Result`.
 - [docs/handwriting.md](docs/handwriting.md) — stroke sampling/judging algorithm and the `Pad` component.
 - [docs/ui.md](docs/ui.md) — theme tokens and UI primitives to reuse.
+- [docs/mascot.md](docs/mascot.md) — guide characters, moods/animation, where they appear.
 
 Keep these docs updated when you change the things they describe.
 
