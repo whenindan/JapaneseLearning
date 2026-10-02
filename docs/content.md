@@ -1,6 +1,6 @@
 # Lesson content (`src/data.ts`)
 
-All learning content is hard-coded in `src/data.ts` for **one lesson** (Minna no Nihongo Bài 1, "はじめまして"). The header comment says it is placeholder until the client's slide content arrives. Screens read these arrays directly, so counts/labels update automatically when you add items.
+All learning content is hard-coded in `src/data.ts` for **one lesson** (Minna no Nihongo Bài 1, "はじめまして"). It follows the client's NKDV slide decks, extracted in [source-lesson1.md](source-lesson1.md): vocabulary and kanji lists are taken verbatim; grammar structure 1 uses the deck's explanation and examples, while structures 2–5 are written from the deck's can-do goals (the rest of the grammar deck wasn't in the export). Listening is the deck's self-introduction can-do. Example characters are the deck's (ミン, ナム, カイン, たなか…, school NKDV). Screens read these arrays directly, so counts/labels update automatically when you add items.
 
 | Export | Type | Used by |
 |---|---|---|
@@ -16,7 +16,7 @@ All learning content is hard-coded in `src/data.ts` for **one lesson** (Minna no
 Field notes:
 - `KanjiItem.han` is the Sino-Vietnamese reading (Hán Việt, e.g. `TƯ`). `on`/`kun` use `・` to separate multiple readings; the first `kun` reading is what gets spoken.
 - `KanjiItem.d` = one SVG path per stroke, in stroke order, in KanjiVG's 109×109 coordinate box. Copy from KanjiVG (`kanjivg.tagaini.net`, CC BY-SA 3.0 — keep attribution). Only the `M/L/H/V/C/S/Q/T/Z` path commands are supported by `sample()`.
-- Audio is always `expo-speech` TTS in `ja-JP`; there are no audio assets. Write Japanese with spaces between phrases the way Minna no Nihongo does — TTS and the `order` exercise both depend on it.
+- Audio is always `expo-speech` TTS in `ja-JP`; there are no audio assets. `speak()` drops `～`, so pattern cards like `～さん` are fine. Write Japanese with spaces between phrases the way Minna no Nihongo does — TTS and the `order` exercise both depend on it.
 
 ## Exercise items (`Ex` union)
 

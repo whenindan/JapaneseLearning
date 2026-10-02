@@ -7,7 +7,8 @@ import { C, F, J, R, shadow } from './theme';
 
 export const speak = (text: string, rate = 0.9, opts: Speech.SpeechOptions = {}) => {
   Speech.stop();
-  Speech.speak(text, { language: 'ja-JP', rate, ...opts });
+  // `～` is a slot placeholder in patterns like ～さん — don't read it aloud
+  Speech.speak(text.replace(/～/g, ''), { language: 'ja-JP', rate, ...opts });
 };
 export const stopSpeak = () => Speech.stop();
 
@@ -53,19 +54,29 @@ export const FadeIn = ({ children, delay = 0, dx = 0, dy = 10, style }: { childr
 };
 
 /** Card-flip: returns the face to draw and a rotateY transform. The face swaps while the card is edge-on. */
-export function useFlip(face: boolean) {
+export function useFlip(face: boolean, perspective = 900) {
   const [shown, setShown] = useState(face);
-  const [v] = useState(() => new Animated.Value(1));
+  const [v] = useState(() => new Animated.Value(0));
   const want = useRef(face);
   useEffect(() => {
     want.current = face;
-    if (face === shown) return;
-    Animated.timing(v, { toValue: 0, duration: 120, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(() => {
+    // toggled back before the swap — just turn back to rest
+    if (face === shown) return void Animated.timing(v, { toValue: 0, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    // turn edge-on, swap faces, then come in from the opposite edge so it reads as one continuous turn
+    Animated.timing(v, { toValue: 1, duration: 120, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
+      if (!finished) return;
       setShown(want.current);
-      Animated.timing(v, { toValue: 1, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+      v.setValue(-1);
+      Animated.timing(v, { toValue: 0, duration: 160, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
     });
   }, [face]);
-  return [shown, [{ perspective: 900 }, { rotateY: v.interpolate({ inputRange: [0, 1], outputRange: ['90deg', '0deg'] }) }]] as const;
+  // perspective must stay first in the transform array or Android renders the turn flat.
+  // Large cards need a farther camera, else the near edge balloons over the surrounding UI; the dip in scale keeps it inside its slot.
+  return [shown, [
+    { perspective },
+    { rotateY: v.interpolate({ inputRange: [-1, 1], outputRange: ['-90deg', '90deg'] }) },
+    { scale: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.92, 1, 0.92] }) },
+  ]] as const;
 }
 
 export const Card = ({ children, style, onPress }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void }) => {

@@ -20,7 +20,7 @@ Reuse these instead of raw RN components/styles. No UI library is used.
 | `Icon` / `MIcon` | Feather / MaterialCommunityIcons |
 | `Tap` | `Pressable` with spring scale-down on press (`scaleTo`) |
 | `FadeIn` | Fade + slide in on mount; change its `key` to replay |
-| `useFlip(face)` | 3D card flip; returns `[shownFace, transform]` |
+| `useFlip(face, perspective = 900)` | 3D card flip; returns `[shownFace, transform]`. Pass a larger `perspective` for big cards (flashcards use 2400), keep the transform first in the array, and give the flipping view its own `collapsable={false}` wrapper when it has siblings (iOS otherwise hides its far half behind them mid-turn) |
 | `Card` | White rounded box; pressable if `onPress` |
 | `Btn` | Full button. `kind`: `primary \| danger \| ok \| dark \| ghost \| light`; optional Feather `icon` |
 | `Pill` | Rounded label/button with optional icon |

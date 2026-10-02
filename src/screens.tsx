@@ -348,37 +348,41 @@ export function Grammar({ guide, back, seen }: { guide: MascotId; back: () => vo
 /** Deals in from the deck on mount and flips in 3D when tapped */
 function FlashCard({ w, fav, onFav }: { w: (typeof VOCAB)[number]; fav: boolean; onFav: () => void }) {
   const [flip, setFlip] = useState(false);
-  const [face, turn] = useFlip(flip);
+  const [face, turn] = useFlip(flip, 2400);
   const [enter] = useState(() => new Animated.Value(0));
   useEffect(() => { Animated.spring(enter, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 6 }).start(); }, []);
   const deal = [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [28, 0] }) }, { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) }];
+  // iOS depth-sorts 3D-transformed layers against their siblings, so mid-flip the far half of the card
+  // sank behind the deck views. Its own (non-flattened) wrapper keeps the turn out of their 3D space.
   return (
-    <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 24, opacity: enter, transform: [...deal, ...turn] }}>
-      <Pressable onPress={() => { setFlip(!flip); if (!flip) speak(w.kana); }} style={[{ flex: 1, backgroundColor: C.white, borderRadius: 28, padding: 22 }, shadow(12, 30, 0.1)]}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Pill label={w.pos} bg={C.goldSoft} color={C.goldDark} size={12} style={{ paddingVertical: 4, paddingHorizontal: 10 }} />
-          <Pressable hitSlop={10} onPress={onFav}><MIcon name={fav ? 'star' : 'star-outline'} size={22} color={C.gold} /></Pressable>
-        </View>
-        <View style={{ height: 130, borderRadius: 18, backgroundColor: C.brandSoft, marginTop: 14, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 72 }}>{w.emoji}</Text></View>
-        {face ? (
-          <View style={{ marginTop: 16, alignItems: 'center' }}>
-            <JP size={38} lh={1.3} center>{w.kana}</JP>
-            {!!w.kanji && <JP size={15} w={500} color={C.mute}>{w.kanji}</JP>}
-            <T size={20} w={600} color={C.brand} center style={{ marginTop: 8 }}>{w.vi}</T>
+    <View collapsable={false} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
+      <Animated.View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 24, opacity: enter, transform: [...turn, ...deal] }}>
+        <Pressable onPress={() => { setFlip(!flip); if (!flip) speak(w.kana); }} style={[{ flex: 1, backgroundColor: C.white, borderRadius: 28, padding: 22 }, shadow(12, 30, 0.1)]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Pill label={w.pos} bg={C.goldSoft} color={C.goldDark} size={12} style={{ paddingVertical: 4, paddingHorizontal: 10 }} />
+            <Pressable hitSlop={10} onPress={onFav}><MIcon name={fav ? 'star' : 'star-outline'} size={22} color={C.gold} /></Pressable>
           </View>
-        ) : (
-          <View style={{ marginTop: 28, alignItems: 'center', gap: 8 }}>
-            <Icon name="refresh-cw" size={20} color={C.faint} />
-            <T size={14} color={C.faint}>Chạm để lật thẻ</T>
+          <View style={{ height: 130, borderRadius: 18, backgroundColor: C.brandSoft, marginTop: 14, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 72 }}>{w.emoji}</Text></View>
+          {face ? (
+            <View style={{ marginTop: 16, alignItems: 'center' }}>
+              <JP size={38} lh={1.3} center>{w.kana}</JP>
+              {!!w.kanji && <JP size={15} w={500} color={C.mute}>{w.kanji}</JP>}
+              <T size={20} w={600} color={C.brand} center style={{ marginTop: 8 }}>{w.vi}</T>
+            </View>
+          ) : (
+            <View style={{ marginTop: 28, alignItems: 'center', gap: 8 }}>
+              <Icon name="refresh-cw" size={20} color={C.faint} />
+              <T size={14} color={C.faint}>Chạm để lật thẻ</T>
+            </View>
+          )}
+          <View style={{ flex: 1 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+            <Pill label="Phát âm" bg={C.brand} color={C.white} icon={<Icon name="volume-2" size={16} color={C.white} />} onPress={() => speak(w.kana)} style={{ paddingVertical: 10, paddingHorizontal: 16 }} />
+            <Pill label="Chậm" bg={C.bg} icon={<MIcon name="snail" size={16} />} onPress={() => speak(w.kana, 0.4)} style={{ paddingVertical: 10, paddingHorizontal: 16 }} />
           </View>
-        )}
-        <View style={{ flex: 1 }} />
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
-          <Pill label="Phát âm" bg={C.brand} color={C.white} icon={<Icon name="volume-2" size={16} color={C.white} />} onPress={() => speak(w.kana)} style={{ paddingVertical: 10, paddingHorizontal: 16 }} />
-          <Pill label="Chậm" bg={C.bg} icon={<MIcon name="snail" size={16} />} onPress={() => speak(w.kana, 0.4)} style={{ paddingVertical: 10, paddingHorizontal: 16 }} />
-        </View>
-      </Pressable>
-    </Animated.View>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
